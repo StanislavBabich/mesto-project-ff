@@ -1,28 +1,35 @@
 export function openModal(popup) {
-  popup.classList.add('popup_is-opened', 'popup_is-animated');
-  popup.style.visibility = 'visible';
-  
-  popup.style.opacity = '0';
+  popup.classList.add('popup_is-animated');
+  popup.classList.remove('popup_is-opened');
+
   requestAnimationFrame(() => {
-    popup.style.opacity = '1';
+    popup.classList.add('popup_is-opened');
   });
 
-  function handleEsc(event) {
-    if (event.key === 'Escape' || event.key === 'Esc') {
+  popup._handleEsc = function (evt) {
+    if (evt.key === 'Escape') {
       closeModal(popup);
     }
-  }
-  
-  document.addEventListener('keydown', handleEsc);
-  
-  popup._handleEsc = handleEsc;
+  };
+  document.addEventListener('keydown', popup._handleEsc);
 }
 
 export function closeModal(popup) {
-  popup.classList.remove('popup_is-opened', 'popup_is-animated');
+  
+  popup.classList.remove('popup_is-opened');
 
-  if (popup._handleEsc) {
-    document.removeEventListener('keydown', popup._handleEsc);
-    delete popup._handleEsc;
+  function onTransitionEnd(event) {
+    if (event.propertyName === 'opacity' || event.propertyName === 'visibility') {
+      popup.removeEventListener('transitionend', onTransitionEnd);
+
+      popup.classList.remove('popup_is-animated');
+
+      if (popup._handleEsc) {
+        document.removeEventListener('keydown', popup._handleEsc);
+        delete popup._handleEsc;
+      }
+    }
   }
+
+  popup.addEventListener('transitionend', onTransitionEnd);
 }
