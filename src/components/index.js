@@ -1,10 +1,11 @@
 import "../pages/index.css";
 import { createCard, handleDelete, handleLike } from './card.js';
 import { openModal, closeModal } from './modal.js';
-import { initialCards } from './cards.js';
+import { enableValidation, clearValidation, validationConfig, toggleButtonState } from './validation.js';
+import * as api from './api.js';
 
-const logoImage = require('../images/logo.svg');
-const avatarImage = require('../images/avatar.jpg');
+import logoImage from '../images/logo.svg';
+import avatarImage from '../images/avatar.jpg';
 
 const logoElement = document.querySelector('.header__logo');
 logoElement.src = logoImage;
@@ -23,14 +24,13 @@ const profileDescription = document.querySelector('.profile__description');
 
 const popupEdit = document.querySelector('.popup_type_edit');
 const formEdit = popupEdit.querySelector('.popup__form');
-const inputName = formEdit.querySelector('.popup__input_type_name');
-const inputDescription = formEdit.querySelector('.popup__input_type_description');
+const inputName = formEdit.querySelector('#popup__profile-name');
+const inputDescription = formEdit.querySelector('#popup__profile-job');
 
 const popupNewCard = document.querySelector('.popup_type_new-card');
-const formNewPlace = document.querySelector('.popup__form[name="new-place"]');
-
-const inputPlaceName = formNewPlace.querySelector('.popup__input_type_card-name');
-const inputPlaceLink = formNewPlace.querySelector('.popup__input_type_url');
+const formNewPlace = popupNewCard.querySelector('.popup__form');
+const inputPlaceName = formNewPlace.querySelector('#popup__card-name');
+const inputPlaceLink = formNewPlace.querySelector('#popup__card-url');
 
 const editButton = document.querySelector('.profile__edit-button');
 const addButton = document.querySelector('.profile__add-button');
@@ -45,36 +45,102 @@ function openImagePopup(src, alt) {
 function handleEditButtonClick() {
   inputName.value = profileTitle.textContent;
   inputDescription.value = profileDescription.textContent;
+
+  clearValidation(formEdit, validationConfig);
+
+  const inputList = Array.from(formEdit.querySelectorAll(validationConfig.inputSelector));
+  const buttonElement = formEdit.querySelector(validationConfig.submitButtonSelector);
+
+  toggleButtonState(inputList, buttonElement, validationConfig, false);
+
   openModal(popupEdit);
 }
 
 function handleAddButtonClick() {
   formNewPlace.reset();
+
+  clearValidation(formNewPlace, validationConfig);
+
   openModal(popupNewCard);
 }
 
 function handleFormEditSubmit(evt) {
   evt.preventDefault();
-  profileTitle.textContent = inputName.value;
-  profileDescription.textContent = inputDescription.value;
-  closeModal(popupEdit);
+
+  const pattern = /^[a-zA-Zа-яА-ЯёЁ\s-]+$/;
+  const isNameValid = inputName.value.trim() !== '' && pattern.test(inputName.value.trim());
+  const isDescValid = inputDescription.value.trim() !== '' && pattern.test(inputDescription.value.trim());
+
+  if (!isNameValid || !isDescValid) {
+    alert('Имя и описание должны содержать только буквы, пробелы и тире');
+    return;
+  }
+
+  api.updateUserInfo({
+    name: inputName.value.trim(),
+    about: inputDescription.value.trim()
+  })
+    .then((updatedUser) => {
+      profileTitle.textContent = updatedUser.name;
+      profileDescription.textContent = updatedUser.about;
+      closeModal(popupEdit);
+    })
+    .catch(err => {
+      console.error('Ошибка обновления профиля:', err);
+      alert('Не удалось обновить профиль');
+    });
+}
+
+function isValidUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function handleFormNewPlaceSubmit(evt) {
   evt.preventDefault();
 
-  const placeName = inputPlaceName.value;
-  const link = inputPlaceLink.value;
+  const name = inputPlaceName.value.trim();
+  const link = inputPlaceLink.value.trim();
 
-  const newCardData = { name: placeName, link: link };
+  if (!name) {
+    alert('Введите название карточки');
+    return;
+  }
 
-  const newCardElement = createCard(newCardData, handleDelete, handleLike, openImagePopup);
+  if (!isValidUrl(link)) {
+    alert('Введите корректный URL изображения, начинающийся с http:// или https://');
+    return;
+  }
 
-  cardsContainer.prepend(newCardElement);
+  const submitButton = formNewPlace.querySelector(validationConfig.submitButtonSelector);
+  if (submitButton) submitButton.disabled = true;
 
-  formNewPlace.reset();
-
-  closeModal(popupNewCard);
+  api.addCard({ name, link })
+    .then(newCard => {
+      const cardElement = createCard(newCard, handleDelete, handleLike, openImagePopup);
+      cardsContainer.prepend(cardElement);
+      formNewPlace.reset();
+      clearValidation(formNewPlace, validationConfig);
+      closeModal(popupNewCard);
+    })
+    .catch(err => {
+      console.error('Ошибка добавления карточки:', err);
+      let errorMessage = 'Не удалось добавить карточку';
+      if (err && err.status) {
+        errorMessage += ` (код ошибки ${err.status})`;
+        if (err.body && err.body.message) {
+          errorMessage += `: ${err.body.message}`;
+        }
+      }
+      alert(errorMessage);
+    })
+    .finally(() => {
+      if (submitButton) submitButton.disabled = false;
+    });
 }
 
 editButton.addEventListener('click', handleEditButtonClick);
@@ -95,7 +161,27 @@ document.querySelectorAll('.popup').forEach((popup) => {
   });
 });
 
-initialCards.forEach((card) => {
-  const cardElement = createCard(card, handleDelete, handleLike, openImagePopup);
-  cardsContainer.appendChild(cardElement);
-});
+window.currentUserId = null;
+
+Promise.all([api.getUserInfo(), api.getInitialCards()])
+  .then(([userData, cards]) => {
+    console.log('Данные профиля:', userData);
+
+    window.currentUserId = userData._id;
+
+    profileTitle.textContent = userData.name;
+    profileDescription.textContent = userData.about;
+    profileImageElement.style.backgroundImage = `url(${userData.avatar})`;
+
+    cardsContainer.innerHTML = '';
+    cards.forEach(card => {
+      const cardElement = createCard(card, handleDelete, handleLike, openImagePopup);
+      cardsContainer.appendChild(cardElement);
+    });
+  })
+  .catch(err => {
+    console.error('Ошибка загрузки данных с сервера:', err);
+    alert('Не удалось загрузить данные с сервера');
+  });
+
+enableValidation(validationConfig);

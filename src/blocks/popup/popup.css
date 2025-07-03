@@ -21,3 +21,24 @@
   right: 0;
   z-index: 10;
 }
+
+.popup__input-error {
+  color: #FF0000;
+  font-size: 12px;
+  display: block;
+  min-height: 28px;
+  margin-right: 10px;
+}
+
+.popup__input_type_error {
+  border-color: #FF0000;
+  outline: none; 
+}
+
+button:disabled {
+  background-color: #ffffff;
+  color:  #BDBDBD;
+  border: 1px solid  #BDBDBD;
+  cursor: default;
+  pointer-events: none;
+}
