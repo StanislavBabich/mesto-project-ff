@@ -1,3 +1,4 @@
+//validation.js
 const validationConfig = {
   formSelector: '.popup__form',
   inputSelector: '.popup__input',
@@ -94,7 +95,7 @@ function checkInputValidity(formElement, inputElement, config, isFormSubmitted =
     return true;
   }
 
-  if (inputElement.id === 'popup__card-url') {
+  if (inputElement.id === 'popup__card-url' || inputElement.id === 'popup__avatar-url') {
     if (value === '') {
       if (shouldShowError) {
         showInputError(formElement, inputElement, 'Вы пропустили это поле', config);

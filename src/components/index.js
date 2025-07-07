@@ -1,5 +1,6 @@
+//index.js
 import "../pages/index.css";
-import { createCard, handleDelete, handleLike } from './card.js';
+import { createCard, handleLike } from './card.js';
 import { openModal, closeModal } from './modal.js';
 import { enableValidation, clearValidation, validationConfig, toggleButtonState } from './validation.js';
 import * as api from './api.js';
@@ -12,6 +13,11 @@ logoElement.src = logoImage;
 
 const profileImageElement = document.querySelector('.profile__image');
 profileImageElement.style.backgroundImage = `url(${avatarImage})`;
+
+const avatarEditButton = document.querySelector('.profile__avatar-edit-button');
+if (avatarEditButton) {
+  avatarEditButton.remove();
+}
 
 const cardsContainer = document.querySelector('.places__list');
 
@@ -32,8 +38,22 @@ const formNewPlace = popupNewCard.querySelector('.popup__form');
 const inputPlaceName = formNewPlace.querySelector('#popup__card-name');
 const inputPlaceLink = formNewPlace.querySelector('#popup__card-url');
 
+const popupAvatar = document.querySelector('.popup_type_edit-avatar');
+const formEditAvatar = popupAvatar.querySelector('.popup__form');
+const inputAvatarUrl = formEditAvatar.querySelector('#popup__avatar-url');
+
+const popupConfirmDelete = document.querySelector('.popup_type_confirm-delete');
+const formConfirmDelete = popupConfirmDelete.querySelector('.popup__form');
+const confirmDeleteButton = formConfirmDelete.querySelector('.popup__button');
+
 const editButton = document.querySelector('.profile__edit-button');
 const addButton = document.querySelector('.profile__add-button');
+
+const profileAvatarButton = document.getElementById('profileAvatar');
+
+// Переменные для хранения текущей удаляемой карточки
+let cardIdToDelete = null;
+let cardElementToDelete = null;
 
 function openImagePopup(src, alt) {
   popupImage.src = src;
@@ -50,7 +70,6 @@ function handleEditButtonClick() {
 
   const inputList = Array.from(formEdit.querySelectorAll(validationConfig.inputSelector));
   const buttonElement = formEdit.querySelector(validationConfig.submitButtonSelector);
-
   toggleButtonState(inputList, buttonElement, validationConfig, false);
 
   openModal(popupEdit);
@@ -60,9 +79,66 @@ function handleAddButtonClick() {
   formNewPlace.reset();
 
   clearValidation(formNewPlace, validationConfig);
-
   openModal(popupNewCard);
 }
+
+function handleAvatarEditOpen() {
+  formEditAvatar.reset();
+
+  clearValidation(formEditAvatar, validationConfig);
+
+  const inputList = Array.from(formEditAvatar.querySelectorAll(validationConfig.inputSelector));
+  const buttonElement = formEditAvatar.querySelector(validationConfig.submitButtonSelector);
+  toggleButtonState(inputList, buttonElement, validationConfig, false);
+
+  openModal(popupAvatar);
+}
+
+/**
+ * Новая функция открытия попапа подтверждения удаления,
+ * сохраняет id и элемент карточки для последующего удаления
+ */
+function openConfirmDeletePopup(cardId, cardElement) {
+  cardIdToDelete = cardId;
+  cardElementToDelete = cardElement;
+
+  confirmDeleteButton.textContent = 'Да';
+  confirmDeleteButton.disabled = false;
+
+  openModal(popupConfirmDelete);
+}
+
+/**
+ * Обработчик отправки формы подтверждения удаления
+ */
+formConfirmDelete.addEventListener('submit', (evt) => {
+  evt.preventDefault();
+
+  if (!cardIdToDelete || !cardElementToDelete) {
+    // Нет данных для удаления — просто закрываем попап
+    closeModal(popupConfirmDelete);
+    return;
+  }
+
+  confirmDeleteButton.textContent = 'Удаление...';
+  confirmDeleteButton.disabled = true;
+
+  api.deleteCard(cardIdToDelete)
+    .then(() => {
+      cardElementToDelete.remove();
+      closeModal(popupConfirmDelete);
+    })
+    .catch(err => {
+      console.error('Ошибка удаления карточки:', err);
+      alert('Не удалось удалить карточку');
+    })
+    .finally(() => {
+      confirmDeleteButton.textContent = 'Да';
+      confirmDeleteButton.disabled = false;
+      cardIdToDelete = null;
+      cardElementToDelete = null;
+    });
+});
 
 function handleFormEditSubmit(evt) {
   evt.preventDefault();
@@ -76,6 +152,11 @@ function handleFormEditSubmit(evt) {
     return;
   }
 
+  const submitButton = formEdit.querySelector(validationConfig.submitButtonSelector);
+  const originalText = submitButton.textContent;
+  submitButton.textContent = 'Сохранение...';
+  submitButton.disabled = true;
+
   api.updateUserInfo({
     name: inputName.value.trim(),
     about: inputDescription.value.trim()
@@ -88,6 +169,11 @@ function handleFormEditSubmit(evt) {
     .catch(err => {
       console.error('Ошибка обновления профиля:', err);
       alert('Не удалось обновить профиль');
+    })
+    .finally(() => {
+      submitButton.textContent = originalText;
+      const inputList = Array.from(formEdit.querySelectorAll(validationConfig.inputSelector));
+      toggleButtonState(inputList, submitButton, validationConfig);
     });
 }
 
@@ -117,11 +203,13 @@ function handleFormNewPlaceSubmit(evt) {
   }
 
   const submitButton = formNewPlace.querySelector(validationConfig.submitButtonSelector);
-  if (submitButton) submitButton.disabled = true;
+  const originalText = submitButton.textContent;
+  submitButton.textContent = 'Сохранение...';
+  submitButton.disabled = true;
 
   api.addCard({ name, link })
     .then(newCard => {
-      const cardElement = createCard(newCard, handleDelete, handleLike, openImagePopup);
+      const cardElement = createCard(newCard, openConfirmDeletePopup, handleLike, openImagePopup);
       cardsContainer.prepend(cardElement);
       formNewPlace.reset();
       clearValidation(formNewPlace, validationConfig);
@@ -139,15 +227,59 @@ function handleFormNewPlaceSubmit(evt) {
       alert(errorMessage);
     })
     .finally(() => {
-      if (submitButton) submitButton.disabled = false;
+      submitButton.textContent = originalText;
+      const inputList = Array.from(formNewPlace.querySelectorAll(validationConfig.inputSelector));
+      toggleButtonState(inputList, submitButton, validationConfig);
+    });
+}
+
+function handleFormEditAvatarSubmit(evt) {
+  evt.preventDefault();
+
+  const avatarLink = inputAvatarUrl.value.trim();
+
+  if (!isValidUrl(avatarLink)) {
+    alert('Введите корректный URL, начинающийся с http:// или https://');
+    return;
+  }
+
+  const submitButton = formEditAvatar.querySelector(validationConfig.submitButtonSelector);
+  const originalText = submitButton.textContent;
+  submitButton.textContent = 'Сохранение...';
+  submitButton.disabled = true;
+
+  api.updateUserAvatar(avatarLink)
+    .then((updatedUser) => {
+      profileImageElement.style.backgroundImage = `url(${updatedUser.avatar})`;
+      closeModal(popupAvatar);
+      formEditAvatar.reset();
+      clearValidation(formEditAvatar, validationConfig);
+    })
+    .catch(err => {
+      console.error('Ошибка обновления аватара:', err);
+      alert('Не удалось обновить аватар');
+    })
+    .finally(() => {
+      submitButton.textContent = originalText;
+      const inputList = Array.from(formEditAvatar.querySelectorAll(validationConfig.inputSelector));
+      toggleButtonState(inputList, submitButton, validationConfig);
     });
 }
 
 editButton.addEventListener('click', handleEditButtonClick);
 addButton.addEventListener('click', handleAddButtonClick);
 
+profileAvatarButton.addEventListener('click', handleAvatarEditOpen);
+profileAvatarButton.addEventListener('keydown', (evt) => {
+  if (evt.key === 'Enter' || evt.key === ' ') {
+    evt.preventDefault();
+    handleAvatarEditOpen();
+  }
+});
+
 formEdit.addEventListener('submit', handleFormEditSubmit);
 formNewPlace.addEventListener('submit', handleFormNewPlaceSubmit);
+formEditAvatar.addEventListener('submit', handleFormEditAvatarSubmit);
 
 document.querySelectorAll('.popup').forEach((popup) => {
   const closeBtn = popup.querySelector('.popup__close');
@@ -175,7 +307,7 @@ Promise.all([api.getUserInfo(), api.getInitialCards()])
 
     cardsContainer.innerHTML = '';
     cards.forEach(card => {
-      const cardElement = createCard(card, handleDelete, handleLike, openImagePopup);
+      const cardElement = createCard(card, openConfirmDeletePopup, handleLike, openImagePopup);
       cardsContainer.appendChild(cardElement);
     });
   })

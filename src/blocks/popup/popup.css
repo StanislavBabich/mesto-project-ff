@@ -34,11 +34,3 @@
   border-color: #FF0000;
   outline: none; 
 }
-
-button:disabled {
-  background-color: #ffffff;
-  color:  #BDBDBD;
-  border: 1px solid  #BDBDBD;
-  cursor: default;
-  pointer-events: none;
-}

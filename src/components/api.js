@@ -39,6 +39,17 @@ export function updateUserInfo({ name, about }) {
   }).then(checkResponse);
 }
 
+export function updateUserAvatar(avatarUrl) {
+  return fetch(`${baseUrl}/users/me/avatar`, {
+    method: 'PATCH',
+    headers: {
+      authorization: token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ avatar: avatarUrl })
+  }).then(checkResponse);
+}
+
 export function addCard({ name, link }) {
   return fetch(`${baseUrl}/cards`, {
     method: 'POST',
