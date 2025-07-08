@@ -1,4 +1,3 @@
-//index.js
 import "../pages/index.css";
 import { createCard, handleLike } from './card.js';
 import { openModal, closeModal } from './modal.js';
@@ -51,7 +50,6 @@ const addButton = document.querySelector('.profile__add-button');
 
 const profileAvatarButton = document.getElementById('profileAvatar');
 
-// Переменные для хранения текущей удаляемой карточки
 let cardIdToDelete = null;
 let cardElementToDelete = null;
 
@@ -94,10 +92,6 @@ function handleAvatarEditOpen() {
   openModal(popupAvatar);
 }
 
-/**
- * Новая функция открытия попапа подтверждения удаления,
- * сохраняет id и элемент карточки для последующего удаления
- */
 function openConfirmDeletePopup(cardId, cardElement) {
   cardIdToDelete = cardId;
   cardElementToDelete = cardElement;
@@ -108,14 +102,10 @@ function openConfirmDeletePopup(cardId, cardElement) {
   openModal(popupConfirmDelete);
 }
 
-/**
- * Обработчик отправки формы подтверждения удаления
- */
 formConfirmDelete.addEventListener('submit', (evt) => {
   evt.preventDefault();
 
   if (!cardIdToDelete || !cardElementToDelete) {
-    // Нет данных для удаления — просто закрываем попап
     closeModal(popupConfirmDelete);
     return;
   }
@@ -128,10 +118,6 @@ formConfirmDelete.addEventListener('submit', (evt) => {
       cardElementToDelete.remove();
       closeModal(popupConfirmDelete);
     })
-    .catch(err => {
-      console.error('Ошибка удаления карточки:', err);
-      alert('Не удалось удалить карточку');
-    })
     .finally(() => {
       confirmDeleteButton.textContent = 'Да';
       confirmDeleteButton.disabled = false;
@@ -142,15 +128,6 @@ formConfirmDelete.addEventListener('submit', (evt) => {
 
 function handleFormEditSubmit(evt) {
   evt.preventDefault();
-
-  const pattern = /^[a-zA-Zа-яА-ЯёЁ\s-]+$/;
-  const isNameValid = inputName.value.trim() !== '' && pattern.test(inputName.value.trim());
-  const isDescValid = inputDescription.value.trim() !== '' && pattern.test(inputDescription.value.trim());
-
-  if (!isNameValid || !isDescValid) {
-    alert('Имя и описание должны содержать только буквы, пробелы и тире');
-    return;
-  }
 
   const submitButton = formEdit.querySelector(validationConfig.submitButtonSelector);
   const originalText = submitButton.textContent;
@@ -166,10 +143,6 @@ function handleFormEditSubmit(evt) {
       profileDescription.textContent = updatedUser.about;
       closeModal(popupEdit);
     })
-    .catch(err => {
-      console.error('Ошибка обновления профиля:', err);
-      alert('Не удалось обновить профиль');
-    })
     .finally(() => {
       submitButton.textContent = originalText;
       const inputList = Array.from(formEdit.querySelectorAll(validationConfig.inputSelector));
@@ -177,30 +150,11 @@ function handleFormEditSubmit(evt) {
     });
 }
 
-function isValidUrl(urlString) {
-  try {
-    const url = new URL(urlString);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 function handleFormNewPlaceSubmit(evt) {
   evt.preventDefault();
 
   const name = inputPlaceName.value.trim();
   const link = inputPlaceLink.value.trim();
-
-  if (!name) {
-    alert('Введите название карточки');
-    return;
-  }
-
-  if (!isValidUrl(link)) {
-    alert('Введите корректный URL изображения, начинающийся с http:// или https://');
-    return;
-  }
 
   const submitButton = formNewPlace.querySelector(validationConfig.submitButtonSelector);
   const originalText = submitButton.textContent;
@@ -215,17 +169,6 @@ function handleFormNewPlaceSubmit(evt) {
       clearValidation(formNewPlace, validationConfig);
       closeModal(popupNewCard);
     })
-    .catch(err => {
-      console.error('Ошибка добавления карточки:', err);
-      let errorMessage = 'Не удалось добавить карточку';
-      if (err && err.status) {
-        errorMessage += ` (код ошибки ${err.status})`;
-        if (err.body && err.body.message) {
-          errorMessage += `: ${err.body.message}`;
-        }
-      }
-      alert(errorMessage);
-    })
     .finally(() => {
       submitButton.textContent = originalText;
       const inputList = Array.from(formNewPlace.querySelectorAll(validationConfig.inputSelector));
@@ -238,11 +181,6 @@ function handleFormEditAvatarSubmit(evt) {
 
   const avatarLink = inputAvatarUrl.value.trim();
 
-  if (!isValidUrl(avatarLink)) {
-    alert('Введите корректный URL, начинающийся с http:// или https://');
-    return;
-  }
-
   const submitButton = formEditAvatar.querySelector(validationConfig.submitButtonSelector);
   const originalText = submitButton.textContent;
   submitButton.textContent = 'Сохранение...';
@@ -254,10 +192,6 @@ function handleFormEditAvatarSubmit(evt) {
       closeModal(popupAvatar);
       formEditAvatar.reset();
       clearValidation(formEditAvatar, validationConfig);
-    })
-    .catch(err => {
-      console.error('Ошибка обновления аватара:', err);
-      alert('Не удалось обновить аватар');
     })
     .finally(() => {
       submitButton.textContent = originalText;
@@ -297,7 +231,6 @@ window.currentUserId = null;
 
 Promise.all([api.getUserInfo(), api.getInitialCards()])
   .then(([userData, cards]) => {
-    console.log('Данные профиля:', userData);
 
     window.currentUserId = userData._id;
 
@@ -311,9 +244,5 @@ Promise.all([api.getUserInfo(), api.getInitialCards()])
       cardsContainer.appendChild(cardElement);
     });
   })
-  .catch(err => {
-    console.error('Ошибка загрузки данных с сервера:', err);
-    alert('Не удалось загрузить данные с сервера');
-  });
-
+  
 enableValidation(validationConfig);

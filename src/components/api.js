@@ -1,4 +1,3 @@
-//api.js
 const cohortId = 'wff-cohort-42';
 const token = '57f7533b-cf35-4402-a07a-8edc3d037c3d';
 const baseUrl = `https://mesto.nomoreparties.co/v1/${cohortId}`;

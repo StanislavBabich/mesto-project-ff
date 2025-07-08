@@ -1,4 +1,3 @@
-//card.js
 import * as api from './api.js';
 
 function updateLikeCount(likesArray, likeCountElement) {
