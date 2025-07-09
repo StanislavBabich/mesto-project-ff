@@ -1,11 +1,20 @@
 import "../pages/index.css";
 import { createCard, handleLike } from './card.js';
 import { openModal, closeModal } from './modal.js';
-import { enableValidation, clearValidation, validationConfig, toggleButtonState } from './validation.js';
+import { enableValidation, clearValidation, toggleButtonState } from './validation.js';
 import * as api from './api.js';
 
 import logoImage from '../images/logo.svg';
 import avatarImage from '../images/avatar.jpg';
+
+const validationConfig = {
+  formSelector: '.popup__form',
+  inputSelector: '.popup__input',
+  submitButtonSelector: '.popup__button',
+  inactiveButtonClass: 'popup__button_disabled',
+  inputErrorClass: 'popup__input_type_error',
+  errorClass: 'popup__error_visible'
+};
 
 const logoElement = document.querySelector('.header__logo');
 logoElement.src = logoImage;
@@ -22,7 +31,7 @@ const cardsContainer = document.querySelector('.places__list');
 
 const imagePopup = document.querySelector('.popup_type_image');
 const popupImage = imagePopup.querySelector('.popup__image');
-const popupCaption = imagePopup.querySelector('.popup__caption');
+const popupCaptionImage = imagePopup.querySelector('.popup__caption');
 
 const profileTitle = document.querySelector('.profile__title');
 const profileDescription = document.querySelector('.profile__description');
@@ -56,7 +65,7 @@ let cardElementToDelete = null;
 function openImagePopup(src, alt) {
   popupImage.src = src;
   popupImage.alt = alt;
-  popupCaption.textContent = alt;
+  popupCaptionImage.textContent = alt;
   openModal(imagePopup);
 }
 
@@ -65,10 +74,6 @@ function handleEditButtonClick() {
   inputDescription.value = profileDescription.textContent;
 
   clearValidation(formEdit, validationConfig);
-
-  const inputList = Array.from(formEdit.querySelectorAll(validationConfig.inputSelector));
-  const buttonElement = formEdit.querySelector(validationConfig.submitButtonSelector);
-  toggleButtonState(inputList, buttonElement, validationConfig, false);
 
   openModal(popupEdit);
 }
@@ -84,10 +89,6 @@ function handleAvatarEditOpen() {
   formEditAvatar.reset();
 
   clearValidation(formEditAvatar, validationConfig);
-
-  const inputList = Array.from(formEditAvatar.querySelectorAll(validationConfig.inputSelector));
-  const buttonElement = formEditAvatar.querySelector(validationConfig.submitButtonSelector);
-  toggleButtonState(inputList, buttonElement, validationConfig, false);
 
   openModal(popupAvatar);
 }
@@ -118,6 +119,7 @@ formConfirmDelete.addEventListener('submit', (evt) => {
       cardElementToDelete.remove();
       closeModal(popupConfirmDelete);
     })
+    .catch(err => console.error(`Ошибка удаления карточки: ${err}`))
     .finally(() => {
       confirmDeleteButton.textContent = 'Да';
       confirmDeleteButton.disabled = false;
@@ -126,13 +128,23 @@ formConfirmDelete.addEventListener('submit', (evt) => {
     });
 });
 
+function renderLoading(buttonElement, isLoading, loadingText = 'Сохранение...', originalText = '') {
+  if (isLoading) {
+    buttonElement.textContent = loadingText;
+    buttonElement.disabled = true;
+  } else {
+    buttonElement.textContent = originalText;
+    buttonElement.disabled = false;
+  }
+}
+
 function handleFormEditSubmit(evt) {
   evt.preventDefault();
 
-  const submitButton = formEdit.querySelector(validationConfig.submitButtonSelector);
+  const submitButton = evt.submitter || formEdit.querySelector('button[type="submit"]');
   const originalText = submitButton.textContent;
-  submitButton.textContent = 'Сохранение...';
-  submitButton.disabled = true;
+
+  renderLoading(submitButton, true);
 
   api.updateUserInfo({
     name: inputName.value.trim(),
@@ -143,8 +155,9 @@ function handleFormEditSubmit(evt) {
       profileDescription.textContent = updatedUser.about;
       closeModal(popupEdit);
     })
+    .catch(err => console.error(`Ошибка обновления профиля: ${err}`))
     .finally(() => {
-      submitButton.textContent = originalText;
+      renderLoading(submitButton, false, '', originalText);
       const inputList = Array.from(formEdit.querySelectorAll(validationConfig.inputSelector));
       toggleButtonState(inputList, submitButton, validationConfig);
     });
@@ -153,13 +166,13 @@ function handleFormEditSubmit(evt) {
 function handleFormNewPlaceSubmit(evt) {
   evt.preventDefault();
 
+  const submitButton = evt.submitter || formNewPlace.querySelector('button[type="submit"]');
+  const originalText = submitButton.textContent;
+
   const name = inputPlaceName.value.trim();
   const link = inputPlaceLink.value.trim();
 
-  const submitButton = formNewPlace.querySelector(validationConfig.submitButtonSelector);
-  const originalText = submitButton.textContent;
-  submitButton.textContent = 'Сохранение...';
-  submitButton.disabled = true;
+  renderLoading(submitButton, true);
 
   api.addCard({ name, link })
     .then(newCard => {
@@ -169,8 +182,9 @@ function handleFormNewPlaceSubmit(evt) {
       clearValidation(formNewPlace, validationConfig);
       closeModal(popupNewCard);
     })
+    .catch(err => console.error(`Ошибка добавления карточки: ${err}`))
     .finally(() => {
-      submitButton.textContent = originalText;
+      renderLoading(submitButton, false, '', originalText);
       const inputList = Array.from(formNewPlace.querySelectorAll(validationConfig.inputSelector));
       toggleButtonState(inputList, submitButton, validationConfig);
     });
@@ -179,12 +193,12 @@ function handleFormNewPlaceSubmit(evt) {
 function handleFormEditAvatarSubmit(evt) {
   evt.preventDefault();
 
+  const submitButton = evt.submitter || formEditAvatar.querySelector('button[type="submit"]');
+  const originalText = submitButton.textContent;
+
   const avatarLink = inputAvatarUrl.value.trim();
 
-  const submitButton = formEditAvatar.querySelector(validationConfig.submitButtonSelector);
-  const originalText = submitButton.textContent;
-  submitButton.textContent = 'Сохранение...';
-  submitButton.disabled = true;
+  renderLoading(submitButton, true);
 
   api.updateUserAvatar(avatarLink)
     .then((updatedUser) => {
@@ -193,8 +207,9 @@ function handleFormEditAvatarSubmit(evt) {
       formEditAvatar.reset();
       clearValidation(formEditAvatar, validationConfig);
     })
+    .catch(err => console.error(`Ошибка обновления аватара: ${err}`))
     .finally(() => {
-      submitButton.textContent = originalText;
+      renderLoading(submitButton, false, '', originalText);
       const inputList = Array.from(formEditAvatar.querySelectorAll(validationConfig.inputSelector));
       toggleButtonState(inputList, submitButton, validationConfig);
     });
@@ -231,7 +246,6 @@ window.currentUserId = null;
 
 Promise.all([api.getUserInfo(), api.getInitialCards()])
   .then(([userData, cards]) => {
-
     window.currentUserId = userData._id;
 
     profileTitle.textContent = userData.name;
@@ -244,5 +258,6 @@ Promise.all([api.getUserInfo(), api.getInitialCards()])
       cardsContainer.appendChild(cardElement);
     });
   })
-  
+  .catch(err => console.error(`Ошибка загрузки данных: ${err}`));
+
 enableValidation(validationConfig);

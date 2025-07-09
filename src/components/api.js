@@ -7,8 +7,8 @@ function checkResponse(res) {
     return res.json();
   }
   return res.json()
-    .then(err => Promise.reject({ status: res.status, body: err }))
-    .catch(() => Promise.reject({ status: res.status, body: {} }));
+    .catch(() => ({}))
+    .then((errBody) => Promise.reject({ status: res.status, body: errBody }));
 }
 
 export function getUserInfo() {

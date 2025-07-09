@@ -1,5 +1,7 @@
 import * as api from './api.js';
 
+const cardTemplate = document.querySelector('#card-template');
+
 function updateLikeCount(likesArray, likeCountElement) {
   likeCountElement.textContent = likesArray.length;
 }
@@ -27,7 +29,6 @@ export function handleLike(cardData, likeButton, likeCountElement) {
 }
 
 export function createCard(cardData, openDeletePopupFn, handleLikeFn, handleOpen) {
-  const cardTemplate = document.querySelector('#card-template');
   const cardElement = cardTemplate.content.querySelector('.card').cloneNode(true);
 
   const cardImage = cardElement.querySelector('.card__image');

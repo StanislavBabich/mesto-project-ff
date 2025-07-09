@@ -1,12 +1,3 @@
-const validationConfig = {
-  formSelector: '.popup__form',
-  inputSelector: '.popup__input',
-  submitButtonSelector: '.popup__button',
-  inactiveButtonClass: 'popup__button_disabled',
-  inputErrorClass: 'popup__input_type_error',
-  errorClass: 'popup__error_visible'
-};
-
 function showInputError(formElement, inputElement, errorMessage, config) {
   const errorElement = formElement.querySelector(`#${inputElement.id}-error`);
   if (!errorElement) return;
@@ -30,90 +21,38 @@ function checkInputValidity(formElement, inputElement, config, isFormSubmitted =
   const touched = inputElement.dataset.touched === 'true';
   const shouldShowError = touched || isFormSubmitted;
 
-  if (
-    inputElement.hasAttribute('data-error') &&
-    (inputElement.id === 'popup__profile-name' ||
-      inputElement.id === 'popup__profile-job' ||
-      inputElement.id === 'popup__card-name')
-  ) {
-    const pattern = /^[a-zA-Zа-яА-ЯёЁ\s-]+$/;
+  inputElement.setCustomValidity('');
 
+  if (inputElement.validity.tooShort) {
+    const minLength = inputElement.getAttribute('minlength');
+    const lengthNow = value.length;
+    inputElement.setCustomValidity(`Минимальное количество символов: ${minLength}. Длина текста сейчас: ${lengthNow} символ.`);
+  } else if (inputElement.name === 'avatar-link') {
     if (value === '') {
-      if (shouldShowError) {
-        showInputError(formElement, inputElement, 'Вы пропустили это поле', config);
-      } else {
-        hideInputError(formElement, inputElement, config);
-      }
-      return false;
+      inputElement.setCustomValidity('Вы пропустили это поле.');
+    } else if (inputElement.validity.typeMismatch) {
+      inputElement.setCustomValidity('Введите адрес сайта.');
     }
-
-    if (!pattern.test(value)) {
-      if (shouldShowError) {
-        showInputError(formElement, inputElement, inputElement.dataset.error, config);
-      } else {
-        hideInputError(formElement, inputElement, config);
-      }
-      return false;
-    }
-
-    if (inputElement.hasAttribute('minlength')) {
-      const minLength = Number(inputElement.getAttribute('minlength'));
-      if (value.length < minLength) {
-        if (shouldShowError) {
-          showInputError(
-            formElement,
-            inputElement,
-            `Минимальное количество символов: ${minLength}. Длина текста сейчас: ${value.length} символ.`,
-            config
-          );
-        } else {
-          hideInputError(formElement, inputElement, config);
-        }
-        return false;
-      }
-    }
-
-    if (inputElement.hasAttribute('maxlength')) {
-      const maxLength = Number(inputElement.getAttribute('maxlength'));
-      if (value.length > maxLength) {
-        if (shouldShowError) {
-          showInputError(
-            formElement,
-            inputElement,
-            `Максимальное количество символов: ${maxLength}. Длина текста сейчас: ${value.length} символ.`,
-            config
-          );
-        } else {
-          hideInputError(formElement, inputElement, config);
-        }
-        return false;
-      }
-    }
-
-    hideInputError(formElement, inputElement, config);
-    return true;
-  }
-
-  if (inputElement.id === 'popup__card-url' || inputElement.id === 'popup__avatar-url') {
+  } else if (inputElement.name === 'link') {
     if (value === '') {
-      if (shouldShowError) {
-        showInputError(formElement, inputElement, 'Вы пропустили это поле', config);
-      } else {
-        hideInputError(formElement, inputElement, config);
-      }
-      return false;
+      inputElement.setCustomValidity('Вы пропустили это поле.');
+    } else if (inputElement.validity.typeMismatch) {
+      inputElement.setCustomValidity('Введите адрес сайта.');
     }
-    if (!inputElement.validity.valid) {
-      if (shouldShowError) {
-        const customMessage = inputElement.dataset.error || inputElement.validationMessage;
-        showInputError(formElement, inputElement, customMessage, config);
-      } else {
-        hideInputError(formElement, inputElement, config);
+  } else if (inputElement.hasAttribute('data-error')) {
+    if (['name', 'description'].includes(inputElement.name)) {
+      const pattern = /^[a-zA-Zа-яА-ЯёЁ\s-]+$/;
+      if (value !== '' && !pattern.test(value)) {
+        inputElement.setCustomValidity(inputElement.dataset.error || 'Некорректный формат');
       }
-      return false;
     }
-    hideInputError(formElement, inputElement, config);
-    return true;
+    if (inputElement.hasAttribute('required') && value === '') {
+      inputElement.setCustomValidity('Вы пропустили это поле.');
+    }
+  } else {
+    if (inputElement.hasAttribute('required') && value === '') {
+      inputElement.setCustomValidity('Вы пропустили это поле.');
+    }
   }
 
   if (!inputElement.validity.valid) {
@@ -130,7 +69,12 @@ function checkInputValidity(formElement, inputElement, config, isFormSubmitted =
 }
 
 function hasInvalidInput(inputList, config, isFormSubmitted = false) {
-  return inputList.some(inputElement => !checkInputValidity(inputElement.closest(config.formSelector), inputElement, config, isFormSubmitted));
+  return inputList.some(inputElement => !checkInputValidity(
+    inputElement.closest(config.formSelector),
+    inputElement,
+    config,
+    isFormSubmitted
+  ));
 }
 
 function toggleButtonState(inputList, buttonElement, config, isFormSubmitted = false) {
@@ -199,14 +143,12 @@ function clearValidation(formElement, config) {
     hideInputError(formElement, inputElement, config);
   });
 
-  buttonElement.disabled = true;
-  buttonElement.classList.add(config.inactiveButtonClass);
+  toggleButtonState(inputList, buttonElement, config);
 }
 
 export {
   enableValidation,
   clearValidation,
-  validationConfig,
   toggleButtonState,
   checkInputValidity
 };

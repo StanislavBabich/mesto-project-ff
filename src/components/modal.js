@@ -1,10 +1,8 @@
 export function openModal(popup) {
   popup.classList.add('popup_is-animated');
-  popup.classList.remove('popup_is-opened');
-
-  requestAnimationFrame(() => {
+  setTimeout(() => {
     popup.classList.add('popup_is-opened');
-  });
+  }, 10);
 
   popup._handleEsc = function (evt) {
     if (evt.key === 'Escape') {
@@ -15,7 +13,6 @@ export function openModal(popup) {
 }
 
 export function closeModal(popup) {
-  
   popup.classList.remove('popup_is-opened');
 
   function onTransitionEnd(event) {
